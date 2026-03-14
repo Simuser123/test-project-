@@ -1,0 +1,2 @@
+This is a demo corpus file for Hinduism. Replace this with licensed or public-domain scripture text.
+Always preserve source attribution and provide exact citations in generated answers.

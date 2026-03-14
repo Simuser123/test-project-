@@ -1,8 +1,12 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
+import requests
+
+from rag_engine import RagEngine
 
 
-app = FastAPI(title="Dharmic Wisdom AI API", version="0.1.0")
+app = FastAPI(title="Dharmic Wisdom AI API", version="0.2.0")
+engine = RagEngine()
 
 
 class ChatRequest(BaseModel):
@@ -25,35 +29,32 @@ class ChatResponse(BaseModel):
 
 
 @app.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok"}
+def health() -> dict[str, str | int]:
+    total = len(engine.load_index())
+    return {"status": "ok", "indexed_chunks": total}
 
 
 @app.post("/chat", response_model=ChatResponse)
 def chat(req: ChatRequest) -> ChatResponse:
-    """
-    Placeholder endpoint.
+    try:
+        retrieved = engine.retrieve(req.question, tradition=req.tradition, top_k=4)
+        answer = engine.answer(req.question, retrieved, tradition=req.tradition)
+    except requests.RequestException as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Could not reach Ollama. Ensure Ollama is running and models are pulled "
+                "(nomic-embed-text, llama3.1)."
+            ),
+        ) from exc
 
-    Production flow:
-    1) sanitize + language detect
-    2) retrieve top-k chunks from vector DB
-    3) construct grounded prompt with citations
-    4) call LLM
-    5) return answer + source list
-    """
-    tradition_hint = f" for tradition '{req.tradition}'" if req.tradition else ""
-    answer = (
-        "This is a starter response. Connect a vector database and LLM to answer "
-        f"queries{tradition_hint} with citations. You asked: {req.question}"
-    )
+    sources = [
+        Source(
+            title=chunk.title,
+            url=chunk.path,
+            excerpt=chunk.text[:300],
+        )
+        for chunk in retrieved
+    ]
 
-    return ChatResponse(
-        answer=answer,
-        sources=[
-            Source(
-                title="Sample public-domain source",
-                url="https://example.org/source",
-                excerpt="Replace this with retrieved passage text.",
-            )
-        ],
-    )
+    return ChatResponse(answer=answer, sources=sources)

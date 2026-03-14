@@ -1,86 +1,72 @@
-# Dharmic Wisdom AI – Project Starter
+# Dharmic Wisdom AI (Ollama + Python)
 
-This repository now contains a practical starter blueprint and minimal codebase for building an AI website focused on Dharmic traditions (Hinduism, Jainism, Buddhism, and related Sanskrit/Prakrit/Pali literature).
+You asked: **"I have git, python and Ollama — what to do next?"**
 
-## 1) Important legal + ethical note first
+This repo is now a working local starter:
+- Ingest your text files into an embedding index using Ollama.
+- Ask questions through a FastAPI backend.
+- Get answers with source snippets in the frontend.
 
-Before collecting "every book on the internet," you must filter by:
+## 1) Prerequisites
 
-- **Copyright status** (public domain, open license, or explicit permission).
-- **Terms of service** of each source website.
-- **Religious sensitivity** and contextual accuracy.
-- **Transparent citations** for every answer.
-
-Do **not** indiscriminately scrape copyrighted material.
-
----
-
-## 2) Recommended architecture (RAG-first)
-
-For this domain, use a **Retrieval-Augmented Generation (RAG)** system first, and only fine-tune later if needed.
-
-### Core stack
-
-- **Frontend**: simple web UI (chat + source citations).
-- **Backend API**: FastAPI.
-- **Vector DB**: Qdrant/Weaviate/pgvector.
-- **Embeddings**: multilingual model (supports Sanskrit/Hindi/English).
-- **LLM**: API model or self-hosted instruct model.
-- **Data pipeline**:
-  - source registry
-  - downloader
-  - OCR/transcription
-  - metadata extraction
-  - chunking
-  - embeddings + indexing
-
-### Why RAG first?
-
-- Faster to launch.
-- Easier to update corpus.
-- Better source attribution.
-- Lower risk than full-domain pretraining.
-
----
-
-## 3) Suggested phased plan
-
-1. **Corpus policy + source registry**
-2. **Ingestion pipeline for legal/open texts**
-3. **Search + retrieval quality evaluation**
-4. **Answer generation with strict citations**
-5. **Safety, doctrinal neutrality, and review tooling**
-6. **Optional fine-tuning after strong RAG baseline**
-
----
-
-## 4) Run the starter
-
-### Backend
+- Python 3.10+
+- Ollama installed and running (`ollama serve`)
+- Models:
 
 ```bash
-cd backend
+ollama pull nomic-embed-text
+ollama pull llama3.1
+```
+
+## 2) Put your texts here
+
+Add `.txt` or `.md` files under:
+
+- `data/corpus/hinduism/`
+- `data/corpus/jainism/`
+- `data/corpus/buddhism/`
+
+Use only public-domain/open-license/permitted sources.
+
+## 3) Build the local index
+
+```bash
+cd /workspace/test-project-
 python -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r backend/requirements.txt
+python data_pipeline/ingest.py --corpus data/corpus --out data/index.json
+```
+
+## 4) Start backend + frontend
+
+Backend:
+
+```bash
+cd /workspace/test-project-/backend
 uvicorn app:app --reload --port 8000
 ```
 
-### Frontend
+Frontend (new terminal):
 
 ```bash
-cd frontend
+cd /workspace/test-project-/frontend
 python -m http.server 8080
 ```
 
 Open `http://localhost:8080`.
 
----
+## 5) How retrieval works
 
-## 5) What this starter includes
+1. `data_pipeline/ingest.py` chunks each text file and asks Ollama for embeddings.
+2. Chunks + vectors are stored in `data/index.json`.
+3. `backend/app.py` embeds your question, retrieves top similar chunks, and sends context to Ollama generation.
+4. UI shows answer + cited source snippets.
 
-- `backend/app.py`: FastAPI API with `/health` and `/chat` routes.
-- `data_pipeline/ingest.py`: extensible ingestion scaffold with source legality gates.
-- `frontend/index.html`: basic chat UI that calls backend.
+## 6) Recommended next improvements
 
-This is a **foundation** you can now extend with real model providers, vector search, OCR, and curated source adapters.
+- Add a source registry with URL/license metadata per file.
+- Add OCR pipeline for scanned PDFs.
+- Add evaluation set for factual grounding.
+- Add multilingual query normalization (Sanskrit/Hindi/English).
+- Replace JSON index with a vector DB (Qdrant/pgvector) for scale.

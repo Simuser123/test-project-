@@ -1,29 +1,19 @@
 # Dharmic Wisdom AI (Online, OpenAI API)
 
-You asked for an **internet/online setup**, not local Ollama. This project now uses **OpenAI API key**.
+This project runs online using OpenAI-compatible APIs.
 
-## 1) Prerequisites
+## 1) Create `.env` in project root
 
-- Python 3.10+
-- OpenAI API key
+Create `/workspace/test-project-/.env` and paste:
 
-Set key in shell:
-
-```bash
-export OPENAI_API_KEY="your_key_here"
+```env
+OPENAI_API_KEY=sk-qrst1234qrst1234qrst1234qrst1234qrst1234
+OPENAI_BASE_URL=https://models.inference.ai.azure.com
 ```
 
-## 2) Put your texts in corpus
+> `OPENAI_BASE_URL` can point to OpenAI-compatible endpoints (including Azure-hosted compatible gateways).
 
-Add `.txt` or `.md` files in:
-
-- `data/corpus/hinduism/`
-- `data/corpus/jainism/`
-- `data/corpus/buddhism/`
-
-Use only public-domain/open-license/permitted sources.
-
-## 3) Install dependencies
+## 2) Install dependencies
 
 ```bash
 cd /workspace/test-project-
@@ -32,17 +22,23 @@ source .venv/bin/activate
 pip install -r backend/requirements.txt
 ```
 
-## 4) Build embedding index (online OpenAI)
+## 3) Put your text files in corpus
+
+- `data/corpus/hinduism/`
+- `data/corpus/jainism/`
+- `data/corpus/buddhism/`
+
+Use only public-domain/open-license/permitted sources.
+
+## 4) Build embedding index
 
 ```bash
 python data_pipeline/ingest.py --corpus data/corpus --out data/index.json
 ```
 
-Defaults:
-- Embedding model: `text-embedding-3-small`
-- API URL: `https://api.openai.com/v1`
+This command now auto-reads `OPENAI_API_KEY` and `OPENAI_BASE_URL` from `.env`.
 
-## 5) Start backend + frontend
+## 5) Run backend + frontend
 
 Backend:
 
@@ -51,7 +47,7 @@ cd /workspace/test-project-/backend
 uvicorn app:app --reload --port 8000
 ```
 
-Frontend (new terminal):
+Frontend:
 
 ```bash
 cd /workspace/test-project-/frontend
@@ -60,16 +56,7 @@ python -m http.server 8080
 
 Open `http://localhost:8080`.
 
-## 6) How this works
+## 6) Notes
 
-1. `data_pipeline/ingest.py` chunks your files and calls OpenAI embeddings.
-2. Vectors + text chunks are saved in `data/index.json`.
-3. `backend/rag_engine.py` embeds user query, retrieves top chunks by cosine similarity, and calls OpenAI chat completion.
-4. UI shows answer with source snippets.
-
-## 7) Suggested next steps
-
-- Move from `data/index.json` to pgvector/Qdrant for scale.
-- Add source registry metadata (origin URL, license, translator, edition).
-- Add eval set to check citation faithfulness.
-- Add moderation and abuse filtering in API layer.
+- Backend and ingestion both load `.env` automatically.
+- If your provider has different model IDs, pass them in code/CLI as needed.

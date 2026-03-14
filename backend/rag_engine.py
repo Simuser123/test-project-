@@ -7,6 +7,10 @@ from pathlib import Path
 
 import numpy as np
 import requests
+from dotenv import load_dotenv
+
+
+load_dotenv()
 
 
 @dataclass
@@ -21,12 +25,12 @@ class RagEngine:
     def __init__(
         self,
         index_path: str = "data/index.json",
-        openai_base_url: str = "https://api.openai.com/v1",
+        openai_base_url: str | None = None,
         embedding_model: str = "text-embedding-3-small",
         generation_model: str = "gpt-4o-mini",
     ) -> None:
         self.index_path = Path(index_path)
-        self.openai_base_url = openai_base_url.rstrip("/")
+        self.openai_base_url = (openai_base_url or os.getenv("OPENAI_BASE_URL") or "https://api.openai.com/v1").rstrip("/")
         self.embedding_model = embedding_model
         self.generation_model = generation_model
 

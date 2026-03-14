@@ -6,6 +6,10 @@ import os
 from pathlib import Path
 
 import requests
+from dotenv import load_dotenv
+
+
+load_dotenv()
 
 
 def chunk_text(text: str, chunk_size: int = 800, overlap: int = 100) -> list[str]:
@@ -69,7 +73,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Build local RAG index using OpenAI embeddings")
     parser.add_argument("--corpus", default="data/corpus", help="Folder containing .txt/.md files")
     parser.add_argument("--out", default="data/index.json", help="Output JSON index")
-    parser.add_argument("--openai-url", default="https://api.openai.com/v1", help="OpenAI base URL")
+    parser.add_argument(
+        "--openai-url",
+        default=os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1"),
+        help="OpenAI base URL",
+    )
     parser.add_argument("--embed-model", default="text-embedding-3-small", help="OpenAI embedding model")
     args = parser.parse_args()
 

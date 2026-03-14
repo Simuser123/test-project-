@@ -2,23 +2,10 @@ from __future__ import annotations
 
 import argparse
 import json
-from dataclasses import dataclass
+import os
 from pathlib import Path
 
 import requests
-
-
-@dataclass
-class SourceRecord:
-    name: str
-    url: str
-    license: str
-    allowed: bool
-
-
-def is_source_allowed(license_name: str) -> bool:
-    allow_list = {"public-domain", "cc-by", "cc-by-sa", "permission-granted"}
-    return license_name.strip().lower() in allow_list
 
 
 def chunk_text(text: str, chunk_size: int = 800, overlap: int = 100) -> list[str]:
@@ -34,14 +21,25 @@ def chunk_text(text: str, chunk_size: int = 800, overlap: int = 100) -> list[str
     return chunks
 
 
+def api_key() -> str:
+    key = os.getenv("OPENAI_API_KEY", "").strip()
+    if not key:
+        raise RuntimeError("OPENAI_API_KEY is not set")
+    return key
+
+
 def embed_text(base_url: str, model: str, text: str) -> list[float]:
     res = requests.post(
-        f"{base_url.rstrip('/')}/api/embeddings",
-        json={"model": model, "prompt": text},
+        f"{base_url.rstrip('/')}/embeddings",
+        headers={
+            "Authorization": f"Bearer {api_key()}",
+            "Content-Type": "application/json",
+        },
+        json={"model": model, "input": text},
         timeout=120,
     )
     res.raise_for_status()
-    return res.json()["embedding"]
+    return res.json()["data"][0]["embedding"]
 
 
 def build_index(corpus_dir: Path, output_path: Path, base_url: str, embed_model: str) -> int:
@@ -68,17 +66,17 @@ def build_index(corpus_dir: Path, output_path: Path, base_url: str, embed_model:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Build local RAG index using Ollama embeddings")
+    parser = argparse.ArgumentParser(description="Build local RAG index using OpenAI embeddings")
     parser.add_argument("--corpus", default="data/corpus", help="Folder containing .txt/.md files")
     parser.add_argument("--out", default="data/index.json", help="Output JSON index")
-    parser.add_argument("--ollama", default="http://localhost:11434", help="Ollama base URL")
-    parser.add_argument("--embed-model", default="nomic-embed-text", help="Ollama embedding model")
+    parser.add_argument("--openai-url", default="https://api.openai.com/v1", help="OpenAI base URL")
+    parser.add_argument("--embed-model", default="text-embedding-3-small", help="OpenAI embedding model")
     args = parser.parse_args()
 
     total = build_index(
         corpus_dir=Path(args.corpus),
         output_path=Path(args.out),
-        base_url=args.ollama,
+        base_url=args.openai_url,
         embed_model=args.embed_model,
     )
     print(f"Indexed {total} chunks into {args.out}")

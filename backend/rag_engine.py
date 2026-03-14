@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -20,12 +21,12 @@ class RagEngine:
     def __init__(
         self,
         index_path: str = "data/index.json",
-        ollama_base_url: str = "http://localhost:11434",
-        embedding_model: str = "nomic-embed-text",
-        generation_model: str = "llama3.1",
+        openai_base_url: str = "https://api.openai.com/v1",
+        embedding_model: str = "text-embedding-3-small",
+        generation_model: str = "gpt-4o-mini",
     ) -> None:
         self.index_path = Path(index_path)
-        self.ollama_base_url = ollama_base_url.rstrip("/")
+        self.openai_base_url = openai_base_url.rstrip("/")
         self.embedding_model = embedding_model
         self.generation_model = generation_model
 
@@ -34,19 +35,30 @@ class RagEngine:
             return []
         return json.loads(self.index_path.read_text(encoding="utf-8"))
 
+    @staticmethod
+    def _api_key() -> str:
+        key = os.getenv("OPENAI_API_KEY", "").strip()
+        if not key:
+            raise RuntimeError("OPENAI_API_KEY is not set")
+        return key
+
     def _embed(self, text: str) -> np.ndarray:
         res = requests.post(
-            f"{self.ollama_base_url}/api/embeddings",
-            json={"model": self.embedding_model, "prompt": text},
+            f"{self.openai_base_url}/embeddings",
+            headers={
+                "Authorization": f"Bearer {self._api_key()}",
+                "Content-Type": "application/json",
+            },
+            json={"model": self.embedding_model, "input": text},
             timeout=120,
         )
         res.raise_for_status()
         data = res.json()
-        return np.array(data["embedding"], dtype=np.float32)
+        return np.array(data["data"][0]["embedding"], dtype=np.float32)
 
     @staticmethod
     def _cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
-        denom = (np.linalg.norm(a) * np.linalg.norm(b))
+        denom = np.linalg.norm(a) * np.linalg.norm(b)
         if denom == 0:
             return 0.0
         return float(np.dot(a, b) / denom)
@@ -78,15 +90,11 @@ class RagEngine:
 
     def answer(self, question: str, retrieved: list[RetrievedChunk], tradition: str | None = None) -> str:
         if not retrieved:
-            return (
-                "I could not find indexed passages. Run the ingestion step first, then ask again."
-            )
+            return "I could not find indexed passages. Run the ingestion step first, then ask again."
 
         context_blocks = []
         for i, chunk in enumerate(retrieved, start=1):
-            context_blocks.append(
-                f"[Source {i}] title={chunk.title} path={chunk.path}\n{chunk.text}"
-            )
+            context_blocks.append(f"[Source {i}] title={chunk.title} path={chunk.path}\n{chunk.text}")
 
         tradition_line = f"Tradition filter: {tradition}\n" if tradition else ""
         prompt = (
@@ -99,9 +107,20 @@ class RagEngine:
         )
 
         res = requests.post(
-            f"{self.ollama_base_url}/api/generate",
-            json={"model": self.generation_model, "prompt": prompt, "stream": False},
+            f"{self.openai_base_url}/chat/completions",
+            headers={
+                "Authorization": f"Bearer {self._api_key()}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": self.generation_model,
+                "messages": [
+                    {"role": "system", "content": "Give accurate answers from supplied sources only."},
+                    {"role": "user", "content": prompt},
+                ],
+                "temperature": 0.2,
+            },
             timeout=240,
         )
         res.raise_for_status()
-        return res.json().get("response", "")
+        return res.json()["choices"][0]["message"]["content"].strip()

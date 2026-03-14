@@ -5,7 +5,7 @@ import requests
 from rag_engine import RagEngine
 
 
-app = FastAPI(title="Dharmic Wisdom AI API", version="0.2.0")
+app = FastAPI(title="Dharmic Wisdom AI API", version="0.3.0")
 engine = RagEngine()
 
 
@@ -39,12 +39,14 @@ def chat(req: ChatRequest) -> ChatResponse:
     try:
         retrieved = engine.retrieve(req.question, tradition=req.tradition, top_k=4)
         answer = engine.answer(req.question, retrieved, tradition=req.tradition)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
     except requests.RequestException as exc:
         raise HTTPException(
             status_code=503,
             detail=(
-                "Could not reach Ollama. Ensure Ollama is running and models are pulled "
-                "(nomic-embed-text, llama3.1)."
+                "Could not reach OpenAI API. Check internet access, OPENAI_API_KEY, "
+                "and model names (text-embedding-3-small, gpt-4o-mini)."
             ),
         ) from exc
 

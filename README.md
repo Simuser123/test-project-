@@ -1,26 +1,21 @@
-# Dharmic Wisdom AI (Ollama + Python)
+# Dharmic Wisdom AI (Online, OpenAI API)
 
-You asked: **"I have git, python and Ollama — what to do next?"**
-
-This repo is now a working local starter:
-- Ingest your text files into an embedding index using Ollama.
-- Ask questions through a FastAPI backend.
-- Get answers with source snippets in the frontend.
+You asked for an **internet/online setup**, not local Ollama. This project now uses **OpenAI API key**.
 
 ## 1) Prerequisites
 
 - Python 3.10+
-- Ollama installed and running (`ollama serve`)
-- Models:
+- OpenAI API key
+
+Set key in shell:
 
 ```bash
-ollama pull nomic-embed-text
-ollama pull llama3.1
+export OPENAI_API_KEY="your_key_here"
 ```
 
-## 2) Put your texts here
+## 2) Put your texts in corpus
 
-Add `.txt` or `.md` files under:
+Add `.txt` or `.md` files in:
 
 - `data/corpus/hinduism/`
 - `data/corpus/jainism/`
@@ -28,17 +23,26 @@ Add `.txt` or `.md` files under:
 
 Use only public-domain/open-license/permitted sources.
 
-## 3) Build the local index
+## 3) Install dependencies
 
 ```bash
 cd /workspace/test-project-
 python -m venv .venv
 source .venv/bin/activate
 pip install -r backend/requirements.txt
+```
+
+## 4) Build embedding index (online OpenAI)
+
+```bash
 python data_pipeline/ingest.py --corpus data/corpus --out data/index.json
 ```
 
-## 4) Start backend + frontend
+Defaults:
+- Embedding model: `text-embedding-3-small`
+- API URL: `https://api.openai.com/v1`
+
+## 5) Start backend + frontend
 
 Backend:
 
@@ -56,17 +60,16 @@ python -m http.server 8080
 
 Open `http://localhost:8080`.
 
-## 5) How retrieval works
+## 6) How this works
 
-1. `data_pipeline/ingest.py` chunks each text file and asks Ollama for embeddings.
-2. Chunks + vectors are stored in `data/index.json`.
-3. `backend/app.py` embeds your question, retrieves top similar chunks, and sends context to Ollama generation.
-4. UI shows answer + cited source snippets.
+1. `data_pipeline/ingest.py` chunks your files and calls OpenAI embeddings.
+2. Vectors + text chunks are saved in `data/index.json`.
+3. `backend/rag_engine.py` embeds user query, retrieves top chunks by cosine similarity, and calls OpenAI chat completion.
+4. UI shows answer with source snippets.
 
-## 6) Recommended next improvements
+## 7) Suggested next steps
 
-- Add a source registry with URL/license metadata per file.
-- Add OCR pipeline for scanned PDFs.
-- Add evaluation set for factual grounding.
-- Add multilingual query normalization (Sanskrit/Hindi/English).
-- Replace JSON index with a vector DB (Qdrant/pgvector) for scale.
+- Move from `data/index.json` to pgvector/Qdrant for scale.
+- Add source registry metadata (origin URL, license, translator, edition).
+- Add eval set to check citation faithfulness.
+- Add moderation and abuse filtering in API layer.

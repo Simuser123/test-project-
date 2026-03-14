@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dharmic Wisdom AI</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        background: #f7f7f9;
+      }
+      .wrap {
+        max-width: 760px;
+        margin: 48px auto;
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+        padding: 24px;
+      }
+      h1 {
+        margin-top: 0;
+      }
+      textarea,
+      input,
+      button {
+        width: 100%;
+        font-size: 16px;
+        padding: 10px;
+        margin-top: 10px;
+        box-sizing: border-box;
+      }
+      button {
+        background: #4f46e5;
+        color: white;
+        border: 0;
+        border-radius: 8px;
+        cursor: pointer;
+      }
+      pre {
+        white-space: pre-wrap;
+        background: #f2f4f8;
+        padding: 12px;
+        border-radius: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>Dharmic Wisdom AI (Starter)</h1>
+      <p>Ask a question and get a citation-ready response scaffold.</p>
+
+      <input id="tradition" placeholder="Tradition (optional): hinduism/jainism/buddhism" />
+      <textarea id="question" rows="5" placeholder="Ask your question..."></textarea>
+      <button id="askBtn">Ask</button>
+
+      <h3>Response</h3>
+      <pre id="answer">No response yet.</pre>
+
+      <h3>Sources</h3>
+      <pre id="sources">No sources yet.</pre>
+    </div>
+
+    <script>
+      const askBtn = document.getElementById("askBtn");
+      askBtn.addEventListener("click", async () => {
+        const question = document.getElementById("question").value.trim();
+        const tradition = document.getElementById("tradition").value.trim();
+
+        if (!question) {
+          alert("Please enter a question.");
+          return;
+        }
+
+        const payload = { question };
+        if (tradition) payload.tradition = tradition;
+
+        const res = await fetch("http://localhost:8000/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        if (!res.ok) {
+          document.getElementById("answer").textContent = `Error: ${res.status}`;
+          return;
+        }
+
+        const data = await res.json();
+        document.getElementById("answer").textContent = data.answer;
+        document.getElementById("sources").textContent = JSON.stringify(data.sources, null, 2);
+      });
+    </script>
+  </body>
+</html>
